@@ -222,7 +222,7 @@ public class HW2StudentAnswer implements HW2API{
 	public void loadReviews(String pathReviewsFile) throws Exception {
 		System.out.println("Loading reviews...");
 		
-		int maxThreads = 32;
+		int maxThreads = 200;
 		
 		// First pass: insert into reviews_by_user
 		System.out.println("Pass 1: Loading into reviews_by_user...");
