@@ -14,5 +14,5 @@ astradb/
 .vscode/
 
 # OS
-.DS_Store
+*.DS_Store
 
