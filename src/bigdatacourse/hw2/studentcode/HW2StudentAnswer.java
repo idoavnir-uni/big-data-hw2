@@ -355,7 +355,7 @@ public class HW2StudentAnswer implements HW2API{
 
 	@Override
 	public Iterable<String> itemReviews(String asin) {
-		// Order is already handled by clustering columns: review_time DESC, reviewer_id ASC
+		// the order of the reviews should be by the time (desc), then by the reviewerID
 		BoundStatement bstmt = pstmtSelectReviewsByItem.bind().setString(0, asin);
 		ResultSet rs = session.execute(bstmt);
 		
