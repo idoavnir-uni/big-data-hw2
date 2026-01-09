@@ -224,6 +224,10 @@ public class HW2StudentAnswer implements HW2API{
 		
 		int maxThreads = 200;
 		
+		// Putting the reviews in two passes to avoid too many items in the thread queue.
+		// (When tried to do both together, our program crashed due to too many 
+		// items in the thread queue.)
+
 		// First pass: insert into reviews_by_user
 		System.out.println("Pass 1: Loading into reviews_by_user...");
 		ExecutorService executor1 = Executors.newFixedThreadPool(maxThreads);
