@@ -223,88 +223,58 @@ public class HW2StudentAnswer implements HW2API{
 		System.out.println("Loading reviews...");
 		
 		int maxThreads = 200;
+		ExecutorService executor = Executors.newFixedThreadPool(maxThreads);
 		
-		// Putting the reviews in two passes to avoid too many items in the thread queue.
-		// (When tried to do both together, our program crashed due to too many 
-		// items in the thread queue.)
-
-		// First pass: insert into reviews_by_user
-		System.out.println("Pass 1: Loading into reviews_by_user...");
-		ExecutorService executor1 = Executors.newFixedThreadPool(maxThreads);
 		int count = 0;
 		try (BufferedReader reader = new BufferedReader(new FileReader(pathReviewsFile))) {
 			String line;
 			while ((line = reader.readLine()) != null) {
-				JSONObject json = new JSONObject(line);
+				final String jsonLine = line;
 				
-				String reviewerId = json.getString("reviewerID");
-				String asin = json.getString("asin");
-				String reviewerName = json.optString("reviewerName", NOT_AVAILABLE_VALUE);
-				int rating = (int) json.getDouble("overall");
-				String summary = json.optString("summary", NOT_AVAILABLE_VALUE);
-				String reviewText = json.optString("reviewText", NOT_AVAILABLE_VALUE);
-				Instant reviewTime = Instant.ofEpochSecond(json.getLong("unixReviewTime"));
-				
-				BoundStatement bstmt = pstmtInsertReviewByUser.bind()
-						.setString(0, reviewerId)
-						.setInstant(1, reviewTime)
-						.setString(2, asin)
-						.setString(3, reviewerName)
-						.setInt(4, rating)
-						.setString(5, summary)
-						.setString(6, reviewText);
-				
-				executor1.execute(() -> session.execute(bstmt));
+				executor.execute(() -> {
+					JSONObject json = new JSONObject(jsonLine);
+					
+					String reviewerId = json.getString("reviewerID");
+					String asin = json.getString("asin");
+					String reviewerName = json.optString("reviewerName", NOT_AVAILABLE_VALUE);
+					int rating = (int) json.getDouble("overall");
+					String summary = json.optString("summary", NOT_AVAILABLE_VALUE);
+					String reviewText = json.optString("reviewText", NOT_AVAILABLE_VALUE);
+					Instant reviewTime = Instant.ofEpochSecond(json.getLong("unixReviewTime"));
+					
+					BoundStatement bstmtByUser = pstmtInsertReviewByUser.bind()
+							.setString(0, reviewerId)
+							.setInstant(1, reviewTime)
+							.setString(2, asin)
+							.setString(3, reviewerName)
+							.setInt(4, rating)
+							.setString(5, summary)
+							.setString(6, reviewText);
+					
+					BoundStatement bstmtByItem = pstmtInsertReviewByItem.bind()
+							.setString(0, asin)
+							.setInstant(1, reviewTime)
+							.setString(2, reviewerId)
+							.setString(3, reviewerName)
+							.setInt(4, rating)
+							.setString(5, summary)
+							.setString(6, reviewText);
+					
+					session.execute(bstmtByUser);
+					session.execute(bstmtByItem);
+				});
 				count++;
 				
 				if (count % 10000 == 0) {
-					System.out.println("Pass 1: Loaded " + count + " reviews...");
+					System.out.println("Loaded " + count + " reviews...");
 				}
 			}
 		}
-		executor1.shutdown();
-		executor1.awaitTermination(1, TimeUnit.HOURS);
-		System.out.println("Pass 1: Done. Total: " + count);
 		
-		// Second pass: insert into reviews_by_item
-		System.out.println("Pass 2: Loading into reviews_by_item...");
-		ExecutorService executor2 = Executors.newFixedThreadPool(maxThreads);
-		count = 0;
-		try (BufferedReader reader = new BufferedReader(new FileReader(pathReviewsFile))) {
-			String line;
-			while ((line = reader.readLine()) != null) {
-				JSONObject json = new JSONObject(line);
-				
-				String reviewerId = json.getString("reviewerID");
-				String asin = json.getString("asin");
-				String reviewerName = json.optString("reviewerName", NOT_AVAILABLE_VALUE);
-				int rating = (int) json.getDouble("overall");
-				String summary = json.optString("summary", NOT_AVAILABLE_VALUE);
-				String reviewText = json.optString("reviewText", NOT_AVAILABLE_VALUE);
-				Instant reviewTime = Instant.ofEpochSecond(json.getLong("unixReviewTime"));
-				
-				BoundStatement bstmt = pstmtInsertReviewByItem.bind()
-						.setString(0, asin)
-						.setInstant(1, reviewTime)
-						.setString(2, reviewerId)
-						.setString(3, reviewerName)
-						.setInt(4, rating)
-						.setString(5, summary)
-						.setString(6, reviewText);
-				
-				executor2.execute(() -> session.execute(bstmt));
-				count++;
-				
-				if (count % 10000 == 0) {
-					System.out.println("Pass 2: Loaded " + count + " reviews...");
-				}
-			}
-		}
-		executor2.shutdown();
-		executor2.awaitTermination(1, TimeUnit.HOURS);
-		System.out.println("Pass 2: Done. Total: " + count);
+		executor.shutdown();
+		executor.awaitTermination(1, TimeUnit.HOURS);
 		
-		System.out.println("Loading reviews... Done.");
+		System.out.println("Loading reviews... Done. Total: " + count);
 	}
 
 	@Override
